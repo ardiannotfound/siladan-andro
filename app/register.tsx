@@ -1,45 +1,44 @@
-// Lokasi: app/register.tsx
+// Lokasi: app/register.tsx (PERBAIKAN SafeAreaView)
 import { Link, router } from 'expo-router';
-import { useState } from 'react'; // <-- Hapus 'useRef'
+import { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView, // <-- 1. IMPORT KEMBALI
-    Platform, // <-- 2. IMPORT KEMBALI
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  // SafeAreaView DIHAPUS DARI SINI
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-// --- Impor Animasi (Sama seperti login) ---
-import Animated, {
-    FadeIn,
-    interpolate,
-    useAnimatedScrollHandler,
-    useAnimatedStyle,
-    useSharedValue,
-} from 'react-native-reanimated';
+// --- 1. IMPORT SafeAreaView DARI LIBRARY YANG BENAR ---
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-// --- Warna (Sama seperti login) ---
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import Animated, { FadeIn } from 'react-native-reanimated';
+
+// --- IMPORT KOMPONEN HEADER KITA ---
+import AuthHeader, {
+  HEADER_HEIGHT_EXPANDED, // Komponen (Tampilan)
+  useAnimatedAuthHeader, // Hook (Logika)
+} from '@/components/AuthHeader'; // '@/' adalah shortcut ke root
+
+// --- KONSTANTA LOKAL (YANG MASIH DIPERLUKAN) ---
 const COLORS = {
   primary: '#053F5C',
   secondary: '#429EBD',
   white: '#FFFFFF',
+  placeholder: '#A0A0A0',
 };
-
-// --- Ukuran Header (Sesuai kode terakhirmu) ---
-const HEADER_HEIGHT_EXPANDED = 160; 
-const HEADER_HEIGHT_COLLAPSED = 80;
-const LOGO_HEIGHT_EXPANDED = 150; 
-const LOGO_HEIGHT_COLLAPSED = 75;
 
 export default function RegisterScreen() {
   
-  // --- State 9 variabel (Tidak berubah) ---
   const [namaLengkap, setNamaLengkap] = useState('');
   const [nik, setNik] = useState('');
-  const [tglLahir, setTglLahir] = useState('');
+  const [tglLahir, setTglLahir] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [alamat, setAlamat] = useState('');
   const [noHp, setNoHp] = useState('');
   const [email, setEmail] = useState('');
@@ -47,28 +46,32 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [konfirmasiPassword, setKonfirmasiPassword] = useState('');
 
-  // --- 3. HAPUS SEMUA 'useRef' DAN 'scrollToBottom' ---
-  // const scrollRef = useRef<Animated.ScrollView>(null);
-  // const scrollToBottom = () => { ... };
+  // --- PANGGIL HOOK ANIMASI ---
+  const { scrollHandler, headerAnimatedStyle, logoAnimatedStyle } = useAnimatedAuthHeader();
 
-  // --- Animasi (Sama seperti login) ---
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler((event) => {
-    scrollY.value = event.contentOffset.y;
-  });
-  const headerAnimatedStyle = useAnimatedStyle(() => {
-    const height = interpolate(scrollY.value, [0, HEADER_HEIGHT_EXPANDED - HEADER_HEIGHT_COLLAPSED], [HEADER_HEIGHT_EXPANDED, HEADER_HEIGHT_COLLAPSED], 'clamp');
-    return { height };
-  });
-  const logoAnimatedStyle = useAnimatedStyle(() => {
-    const height = interpolate(scrollY.value, [0, HEADER_HEIGHT_EXPANDED - HEADER_HEIGHT_COLLAPSED], [LOGO_HEIGHT_EXPANDED, LOGO_HEIGHT_COLLAPSED], 'clamp');
-    const width = interpolate(scrollY.value, [0, HEADER_HEIGHT_EXPANDED - HEADER_HEIGHT_COLLAPSED], [LOGO_HEIGHT_EXPANDED, LOGO_HEIGHT_COLLAPSED], 'clamp');
-    return { height, width };
-  });
-  // --- Akhir dari kode animasi ---
+  // --- HANDLER BARU UNTUK DATE PICKER ---
+  const onDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    const currentDate = selectedDate || (tglLahir || new Date());
+    setShowDatePicker(Platform.OS === 'ios'); 
+    
+    if (event.type === 'set') { 
+        setTglLahir(currentDate);
+    } else {
+        setShowDatePicker(false);
+    }
+  };
 
+  // Helper untuk format tanggal di tombol
+  const getFormattedDate = () => {
+    if (!tglLahir) {
+      return "Pilih Tanggal Lahir (DD/MM/YYYY)";
+    }
+    let day = tglLahir.getDate().toString().padStart(2, '0');
+    let month = (tglLahir.getMonth() + 1).toString().padStart(2, '0');
+    let year = tglLahir.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
-  // --- Fungsi 'onRegisterPress' (Tidak berubah) ---
   const onRegisterPress = () => {
     if (!namaLengkap || !nik || !tglLahir || !alamat || !noHp || !email || !username || !password || !konfirmasiPassword) {
       Alert.alert('Gagal 😥', 'Semua kolom wajib diisi!');
@@ -78,31 +81,27 @@ export default function RegisterScreen() {
       Alert.alert('Gagal 😥', 'Password dan Konfirmasi Password tidak cocok!');
       return;
     }
-    console.log('Pura-pura mendaftar...', { namaLengkap, nik, tglLahir, alamat, noHp, email, username });
+    console.log('Pura-pura mendaftar...', { namaLengkap, nik, tglLahir: getFormattedDate(), alamat, noHp, email, username });
     router.push('/verifikasi?mode=register');
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       
-      {/* --- 4. BUNGKUS SEMUANYA DENGAN KEYBOARDAVOIDINGVIEW --- */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
         style={{ flex: 1 }}
       >
-        {/* --- Header (Sama seperti login) --- */}
-        <Animated.View style={[styles.headerContainer, headerAnimatedStyle]}>
-          <Animated.Image
-            source={require('../assets/images/logosiladan.png')}
-            style={[styles.logo, logoAnimatedStyle]}
-          />
-        </Animated.View>
+        {/* --- PANGGIL KOMPONEN HEADER KITA --- */}
+        <AuthHeader 
+          headerAnimatedStyle={headerAnimatedStyle}
+          logoAnimatedStyle={logoAnimatedStyle}
+        />
 
-        {/* --- 5. HAPUS 'ref' DARI SCROLLVIEW --- */}
+        {/* --- HUBUNGKAN SCROLLVIEW KE 'SENSOR' --- */}
         <Animated.ScrollView
-          // ref={scrollRef} <-- HAPUS INI
           contentContainerStyle={styles.scrollContainer}
-          onScroll={scrollHandler}
+          onScroll={scrollHandler} 
           scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled" 
         >
@@ -112,7 +111,6 @@ export default function RegisterScreen() {
               <Text style={styles.title}>Buat Akun Baru</Text>
               <Text style={styles.subtitle}>Silakan isi data diri Anda</Text>
 
-              {/* --- 6. HAPUS SEMUA 'onFocus' DARI INPUT --- */}
               <View style={styles.form}>
                 
                 <Text style={styles.inputLabel}>Nama Lengkap</Text>
@@ -122,43 +120,44 @@ export default function RegisterScreen() {
                 <TextInput style={styles.input} placeholder="16 Digit NIK" value={nik} onChangeText={setNik} keyboardType="numeric" maxLength={16} />
 
                 <Text style={styles.inputLabel}>Tanggal Lahir</Text>
-                <TextInput style={styles.input} placeholder="DD/MM/YYYY" value={tglLahir} onChangeText={setTglLahir} keyboardType="numeric" />
+                <Pressable style={styles.datePickerInput} onPress={() => setShowDatePicker(true)}>
+                  <Text style={tglLahir ? styles.dateText : styles.datePlaceholder}>
+                    {getFormattedDate()}
+                  </Text>
+                </Pressable>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={tglLahir || new Date(2000, 0, 1)}
+                    mode="date"
+                    display="default"
+                    onChange={onDateChange}
+                  />
+                )}
 
                 <Text style={styles.inputLabel}>Alamat</Text>
                 <TextInput style={[styles.input, styles.inputMultiline]} placeholder="Masukkan Alamat Lengkap" value={alamat} onChangeText={setAlamat} multiline={true} numberOfLines={3} />
 
                 <Text style={styles.inputLabel}>Nomor HP</Text>
-                <TextInput style={styles.input} placeholder="Contoh: 08123456789" value={noHp} onChangeText={setNoHp} keyboardType="phone-pad" 
-                  // onFocus={scrollToBottom} <-- HAPUS
-                />
+                <TextInput style={styles.input} placeholder="Contoh: 08123456789" value={noHp} onChangeText={setNoHp} keyboardType="phone-pad" />
 
                 <Text style={styles.inputLabel}>Email</Text>
-                <TextInput style={styles.input} placeholder="Masukkan Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none"
-                  // onFocus={scrollToBottom} <-- HAPUS
-                />
+                <TextInput style={styles.input} placeholder="Masukkan Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
 
                 <Text style={styles.inputLabel}>Username</Text>
-                <TextInput style={styles.input} placeholder="Masukkan Username" value={username} onChangeText={setUsername} autoCapitalize="none"
-                  // onFocus={scrollToBottom} <-- HAPUS
-                />
+                <TextInput style={styles.input} placeholder="Masukkan Username" value={username} onChangeText={setUsername} autoCapitalize="none" />
 
                 <Text style={styles.inputLabel}>Password</Text>
-                <TextInput style={styles.input} placeholder="Buat Password Anda" value={password} onChangeText={setPassword} secureTextEntry 
-                  // onFocus={scrollToBottom} <-- HAPUS
-                />
+                <TextInput style={styles.input} placeholder="Buat Password Anda" value={password} onChangeText={setPassword} secureTextEntry />
 
                 <Text style={styles.inputLabel}>Konfirmasi Password</Text>
-                <TextInput style={styles.input} placeholder="Ketik ulang Password Anda" value={konfirmasiPassword} onChangeText={setKonfirmasiPassword} secureTextEntry 
-                  // onFocus={scrollToBottom} <-- HAPUS
-                />
+                <TextInput style={styles.input} placeholder="Ketik ulang Password Anda" value={konfirmasiPassword} onChangeText={setKonfirmasiPassword} secureTextEntry />
               </View>
 
-              {/* TOMBOL LOGIN (diganti) */}
               <TouchableOpacity style={styles.button} onPress={onRegisterPress}>
                 <Text style={styles.buttonText}>Buat Akun</Text>
               </TouchableOpacity>
 
-              {/* LINK KE REGISTER (diganti) */}
               <View style={styles.registerContainer}>
                 <Text style={styles.registerText}>Sudah punya akun? </Text>
                 <Link href="/login" asChild>
@@ -176,30 +175,14 @@ export default function RegisterScreen() {
   );
 }
 
-// --- STYLESHEET (Tidak berubah) ---
+// --- STYLESHEET (INPUT DIPERBAIKI) ---
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.white,
   },
-  headerContainer: {
-    backgroundColor: COLORS.primary,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-  },
-  logo: {
-    resizeMode: 'contain',
-    marginTop: 30, // Margin statis dari kamu
-  },
   scrollContainer: {
-    paddingTop: HEADER_HEIGHT_EXPANDED,
+    paddingTop: HEADER_HEIGHT_EXPANDED, 
   },
   formContainer: {
     paddingHorizontal: 30,
@@ -228,16 +211,34 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    height: 40,
+    height: 50, 
     borderBottomWidth: 1,
     borderBottomColor: COLORS.secondary,
     fontSize: 16,
     marginBottom: 24,
+    paddingHorizontal: 2, 
+    paddingVertical: 10,  
   },
   inputMultiline: {
-    height: 80,
+    height: 100, 
     textAlignVertical: 'top',
-    paddingTop: 8,
+    paddingTop: 10, 
+  },
+  datePickerInput: {
+    height: 50,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.secondary,
+    marginBottom: 24,
+    paddingHorizontal: 2,
+    justifyContent: 'center', 
+  },
+  dateText: {
+    fontSize: 16,
+    color: COLORS.primary,
+  },
+  datePlaceholder: {
+    fontSize: 16,
+    color: COLORS.placeholder,
   },
   button: {
     backgroundColor: COLORS.primary,
